@@ -3,7 +3,7 @@ DATA SEGMENT
     LF EQU 0AH
     MAX EQU 200
     
-    ;�����Ϣ
+    ;输出消息
     msgCRLF DB CR, LF, '$'
     msgTips DB 'Tips:', CR, LF, '1.Must 4 chars for each name/class/ID/score (eg. Kate/3005/0001/60.0)', CR, LF, '2.Separate each word by a space, no spaces at the end of the line!', CR, LF, '3.Replace 100.0 by A0.0', CR, LF, '$'
     msgName DB 'Please input the names of all students:', CR, LF, '$'
@@ -21,7 +21,7 @@ DATA SEGMENT
     msgAver DB 'The average score of all students is: $'
     msgSorted DB 'Sorted by scores (high to low):', CR, LF, '$'
     
-    ;������
+    ;缓冲区
     bufName  DB MAX, 0, MAX DUP (0)
     bufClass DB MAX, 0, MAX DUP (0)
     bufID    DB MAX, 0, MAX DUP (0)
@@ -29,7 +29,7 @@ DATA SEGMENT
     TEMP     DB 5 DUP(0), '$'
     BUFFER   EQU OFFSET TEMP+5
     
-    ;��������
+    ;计数变量
     cnt DB 0
     _0To6 DB 0
     _6to7 DB 0
@@ -49,10 +49,10 @@ CODE SEGMENT
     ASSUME CS:CODE, DS:DATA, SS:STACK
 START:
     MOV AX, DATA
-    MOV DS, AX            ;��ʼ��
-    ;����������
+    MOV DS, AX            ;初始化
+    ;以下主程序
     
-    ;�����
+    ;输出宏
     PRINT_STR MACRO VAR
         PUSH AX
         PUSH DX
@@ -63,15 +63,15 @@ START:
         POP AX
     ENDM
     
-    ;��ʾ��Ϣ����ȡ����
-    LEA BX, msgTips             ;�����ʾ��Ϣ
+    ;提示消息并读取数据
+    LEA BX, msgTips             ;输出提示消息
     PRINT_STR BX
     LEA BX, msgCRLF
     PRINT_STR BX
     
     LEA BX, msgName
     PRINT_STR BX
-    LEA DX, bufName             ;��ȡ��������
+    LEA DX, bufName             ;读取所有名字
     MOV AH, 0AH
     INT 21H
 
@@ -79,7 +79,7 @@ START:
     PRINT_STR BX
     LEA BX, msgClass
     PRINT_STR BX
-    LEA DX, bufClass            ;��ȡ���а༶
+    LEA DX, bufClass            ;读取所有班级
     MOV AH, 0AH
     INT 21H
     
@@ -87,7 +87,7 @@ START:
     PRINT_STR BX
     LEA BX, msgID
     PRINT_STR BX
-    LEA DX, bufID               ;��ȡ����ID
+    LEA DX, bufID               ;读取所有ID
     MOV AH, 0AH
     INT 21H
     
@@ -95,15 +95,15 @@ START:
     PRINT_STR BX
     LEA BX, msgScore
     PRINT_STR BX
-    LEA DX, bufScore           ;��ȡ���гɼ�
+    LEA DX, bufScore           ;读取所有成绩
     MOV AH, 0AH
     INT 21H
     
-    ;��������
-    MOV SI, 02H                ;���������ݴӵ�������ʼ
-    ;�Ƚϳɼ���ʮλ
+    ;处理数据
+    MOV SI, 02H                ;缓冲区数据从第三个开始
+    ;比较成绩的十位
 CMP9:
-    INC cnt                    ;����ѧ������
+    INC cnt                    ;计数学生个数
     CMP bufScore[SI], '9'
     JB CMP8
     INC _9toA
@@ -126,66 +126,66 @@ CMP6:
 CMP0:
     INC _0To6    
 ACCU:
-    ;ͳ�Ʋ������ۼӺ�
+    ;统计并计算累加和
     XOR AX, AX
-    CMP bufScore[SI], 'A'       ;�ж��Ƿ�Ϊ'A'
+    CMP bufScore[SI], 'A'       ;判断是否为'A'
     JNE NOTA
-    MOV AL, 10                  ;��'A', ת��Ϊ10
+    MOV AL, 10                  ;是'A', 转换为10
     JMP CALC
 NOTA:
     MOV AL, bufScore[SI]
-    SUB AL, '0'                 ;����'A', д�������ַ���Ӧֵ
+    SUB AL, '0'                 ;不是'A', 写入数字字符对应值
 CALC:
-    ;����ɼ���ʮ����ֵ
+    ;计算成绩的十进制值
     MOV BL, 10
-    MUL BL                      ;AX <- AL x BL, ʮλֵ��10
+    MUL BL                      ;AX <- AL x BL, 十位值乘10
     MOV BL, bufScore[SI+1]
-    SUB BL, '0'  ;ת����λֵ
+    SUB BL, '0'  ;转换个位值
     XOR BH, BH
-    ADD AX, BX                  ;AX�Ѿ��洢�ɼ�����������
+    ADD AX, BX                  ;AX已经存储成绩的整数部分
     MOV BL, 10
     MUL BL                      ;AX <- AL x 10
     MOV BL, bufScore[SI+3]
-    SUB BL, '0'  ;С��λֵ
+    SUB BL, '0'  ;小数位值
     XOR BH, BH
     ADD AX, BX
-    ADD averSum, AX             ;��ʱ�ɼ�Ϊ��λ����С���ѳ�10
+    ADD averSum, AX             ;此时成绩为三位数，小数已乘10
     
-    ;ѭ�������
-    ADD SI, 4                   ;ÿ���ɼ�����Ϊ�ģ�����Ϊ�ո�λ��
-    CMP bufScore[SI], CR        ;�ж��Ƿ�Ϊ�س�����
-    JE OVER                     ;�س�����
-    INC SI                      ;�����һ��ȡ�¸��ɼ�
+    ;循环或结束
+    ADD SI, 4                   ;每个成绩长度为四，加四为空格位置
+    CMP bufScore[SI], CR        ;判断是否为回车结束
+    JE OVER                     ;回车结束
+    INC SI                      ;否则加一读取下个成绩
     JMP CMP9
 OVER:
-    ;����ͳ�ƽ���
+    ;数据统计结束
     MOV bufName[SI], '$'
     MOV bufClass[SI], '$'
     MOV bufID[SI], '$'
     MOV bufScore[SI], '$'
-    ;����ƽ��ֵ
+    ;计算平均值
     MOV AX, averSum
     XOR DX, DX
     XOR CX, CX
     MOV CL, cnt
-    DIV CX                 ;AX <- DX:AX / cnt ��
-                           ;DX <- DX:AX / cnt ����
+    DIV CX                 ;AX <- DX:AX / cnt 商
+                           ;DX <- DX:AX / cnt 余数
     MOV CL, 10
-    DIV CL                 ;AL <- AX / 10 ��
-                           ;AH <- AX / 10 ����
-    MOV averFloat, AH      ;��һ����AX����10������AH��С������
-    XOR AH, AH             ;��ո�λ������
-    MOV averSum, AX        ;��λ���̼�ƽ���ɼ�����������
+    DIV CL                 ;AL <- AX / 10 商
+                           ;AH <- AX / 10 余数
+    MOV averFloat, AH      ;第一次商AX除以10的余数AH是小数部分
+    XOR AH, AH             ;清空高位的余数
+    MOV averSum, AX        ;低位的商即平均成绩的整数部分
     
-    ;���ɼ���С����
+    ;按成绩大小排序
     CALL SORT
     
-    ;�����ʾ
+    ;结果显示
     LEA BX, msgCRLF
     PRINT_STR BX
     PRINT_STR BX
     PRINT_STR BX
-    LEA BX, msgResult            ;�����ʾ
+    LEA BX, msgResult            ;结果提示
     PRINT_STR BX
     LEA BX, msgCRLF
     PRINT_STR BX
@@ -194,7 +194,7 @@ OVER:
     LEA BX, msgTotal
     PRINT_STR BX
     MOV AL, cnt
-    CALL DECOUT                  ;����Ŀ
+    CALL DECOUT                  ;总数目
     LEA BX, msgCRLF
     PRINT_STR BX
     
@@ -236,68 +236,68 @@ OVER:
     LEA BX, msgAver
     PRINT_STR BX
     MOV AX, averSum
-    CALL DECOUT                  ;ƽ���ɼ���������
+    CALL DECOUT                  ;平均成绩整数部分
     MOV AH, 2
     MOV DL, '.'
-    INT 21H                      ;С����
+    INT 21H                      ;小数点
     XOR AX, AX
     MOV AL, averFloat
-    CALL DECOUT                  ;ƽ���ɼ�С������
+    CALL DECOUT                  ;平均成绩小数部分
     LEA BX, msgCRLF
     PRINT_STR BX
     
     CALL SORT
     LEA BX, msgCRLF
     PRINT_STR BX
-    LEA BX, msgSorted            ;������ʾ
+    LEA BX, msgSorted            ;排序提示
     PRINT_STR BX
     
-    MOV BX, OFFSET bufName[2]    ;���������
+    MOV BX, OFFSET bufName[2]    ;排序后名字
     PRINT_STR BX
     LEA BX, msgCRLF
     PRINT_STR BX
     
-    MOV BX, OFFSET bufClass[2]   ;�����༶
+    MOV BX, OFFSET bufClass[2]   ;排序后班级
     PRINT_STR BX
     LEA BX, msgCRLF
     PRINT_STR BX
     
-    MOV BX, OFFSET bufID[2]      ;�����ID
+    MOV BX, OFFSET bufID[2]      ;排序后ID
     PRINT_STR BX
     LEA BX, msgCRLF
     PRINT_STR BX
     
-    MOV BX, OFFSET bufScore[2]   ;��������
+    MOV BX, OFFSET bufScore[2]   ;排序后分数
     PRINT_STR BX
     LEA BX, msgCRLF
     PRINT_STR BX
     
-    ;���ز���ϵͳ
+    ;返回操作系统
     MOV AX, 4C00H
     INT 21H
 ;
-; DECOUT: ��ʮ������ʽ���һ���޷��������֣�
-; ��ڣ�(AX),��Ҫ���������
-; ���ڣ���
-; �洢��Ԫ����Ҫʹ��TEMP����Ļ�����
+; DECOUT: 以十进制形式输出一个无符号数（字）
+; 入口：(AX),需要输出的正数
+; 出口：无
+; 存储单元：需要使用TEMP定义的缓冲区
 DECOUT PROC NEAR
     PUSH AX
     PUSH BX
     PUSH CX
     PUSH DX
-    MOV BX, BUFFER           ;ָ�򻺳���β��
+    MOV BX, BUFFER           ;指向缓冲区尾部
 OUTLOOP:
     MOV DX, 0
     MOV CX, 10
-    DIV CX                   ;AX <- ��, DX <- ����, DX:AX/10
-    ADD DL, '0'              ;��0-9ת��Ϊ�ַ�
+    DIV CX                   ;AX <- 商, DX <- 余数, DX:AX/10
+    ADD DL, '0'              ;将0-9转换为字符
     DEC BX
-    MOV BYTE PTR [BX], DL    ;��DL�е��ַ����浽������
+    MOV BYTE PTR [BX], DL    ;将DL中的字符保存到缓冲区
     OR AX, AX
-    JNZ OUTLOOP              ;(AX)=0 �����
+    JNZ OUTLOOP              ;(AX)=0 则结束
 OUTLOOPFIN:
     MOV DX, BX
-    PRINT_STR DX             ;���ת������
+    PRINT_STR DX             ;输出转换后结果
     POP DX
     POP CX
     POP BX
@@ -305,9 +305,9 @@ OUTLOOPFIN:
     RET
 DECOUT ENDP
 ;
-; SORT�����ɼ��ɴ�Сð������
-; ��ڣ�cnt, bufName, bufClass, bufID, bufScore
-; ���ڣ���
+; SORT：按成绩由大到小冒泡排序
+; 入口：cnt, bufName, bufClass, bufID, bufScore
+; 出口：无
 SORT PROC NEAR
     PUSH AX
     PUSH BX
@@ -318,26 +318,26 @@ SORT PROC NEAR
     
     XOR CX, CX
     MOV CL, cnt
-    DEC CX                    ;���ѭ������ΪԪ�ظ�����һ
+    DEC CX                    ;外层循环次数为元素个数减一
 LOOP_OUT:
-    MOV DI, CX                ;����ѭ���������ⱻ�ڲ��ƻ�
-                              ;�ڲ�ѭ�������������ͬ,�����ʼ��
-    MOV BX, 02H               ;�ڲ�ѭ����ʼ״̬���ӵ������ַ���ʼ
+    MOV DI, CX                ;保存循环次数以免被内层破坏
+                              ;内层循环次数与外层相同,无需初始化
+    MOV BX, 02H               ;内层循环初始状态，从第三个字符开始
 LOOP_IN:
     MOV AL, bufScore[BX]
-    CMP AL, bufScore[BX+5]    ;�Ƚ�ʮλ
-    JA CONTI                  ;���ں�һ����,����ѭ��
-    JB XCH                    ;С�ں�һ����������
+    CMP AL, bufScore[BX+5]    ;比较十位
+    JA CONTI                  ;大于后一个数,继续循环
+    JB XCH                    ;小于后一个数，交换
     MOV AL, bufScore[BX+1]
-    CMP AL, bufScore[BX+1+5]  ;�Ƚϸ�λ
+    CMP AL, bufScore[BX+1+5]  ;比较个位
     JA CONTI
     JB XCH
     MOV AL, bufScore[BX+3]
-    CMP AL, bufScore[BX+3+5]  ;�Ƚ�С��λ
-    JAE CONTI                 ;���ڵ��ں�һ��������ѭ��
-XCH:                          ;������ǰԪ�غͺ�һ��
-    MOV DX, CX                ;����ѭ����ǰ����
-    MOV CX, 4                 ;�������黺��������
+    CMP AL, bufScore[BX+3+5]  ;比较小数位
+    JAE CONTI                 ;大于等于后一个，继续循环
+XCH:                          ;交换当前元素和后一个
+    MOV DX, CX                ;保存循环当前次数
+    MOV CX, 4                 ;交换四组缓冲区数据
     MOV SI, 0
 LOOP4:
     MOV AH, bufName[BX][SI]
@@ -352,13 +352,13 @@ LOOP4:
     MOV AH, bufName[BX+3][SI]
     XCHG AH, bufName[BX+3+5][SI]
     MOV bufName[BX+3][SI], AH
-    ADD SI, MAX+2             ;����һ���������ĳ��ȣ�ָ���¸�����
+    ADD SI, MAX+2             ;加上一个缓冲区的长度，指向下个数组
     LOOP LOOP4
-    MOV CX, DX                ;�ָ��ڲ�ѭ������
+    MOV CX, DX                ;恢复内层循环次数
 CONTI:
-    ADD BX, 05H               ;��һ��Ԫ�ص��±�
+    ADD BX, 05H               ;下一个元素的下标
     LOOP LOOP_IN
-    MOV CX, DI                ;�ָ����ѭ������
+    MOV CX, DI                ;恢复外层循环次数
     LOOP LOOP_OUT
     
     POP DI
